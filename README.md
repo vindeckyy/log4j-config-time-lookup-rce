@@ -13,7 +13,7 @@
 
 **Component:** `org.apache.logging.log4j:log4j-core`
 **Severity:** Critical
-**CVSS 3.1:** `10.0 AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
+**CVSS 3.1 (code-execution chain):** `10.0 AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
 **CWE:** CWE-917 (improper neutralization of special elements in an outbound message) →
 CWE-94 (improper control of generation of code) / CWE-200 (information exposure)
 **Affected:** `log4j-core` 2.14.1 – **2.26.1** (current release) — verified by execution
@@ -21,6 +21,17 @@ CWE-94 (improper control of generation of code) / CWE-200 (information exposure)
 `log4j` 1.x (different code path), Log4j 3.x (JNDI removed; the substitutor split below is
 unchanged, so the same defect is expected there — source-level only, see *Limitations*)
 **Found:** 2026-10-23
+**Disclosure status:** one report covering both findings from this audit; see
+[`DISCLOSURE.md`](DISCLOSURE.md) for the timeline.
+
+> **Why this vector.** The trigger is attacker-controlled data reaching the application over the
+> network — the same shape as Log4Shell — so `AV:N/PR:N/UI:N` applies. Scope is *changed* because
+> the attacker starts in the requester's authority (an anonymous or cross-tenant position) and
+> ends with code execution as the server. The score covers the **code-execution chain**, which
+> needs two conditions on the target: scripting enabled and a configuration that interpolates a
+> lookup into a script attribute. The **defect itself is unconditional** — it is present on
+> every release in the range above — and the disclosure-only impact is scored separately at
+> 7.5 / 8.5 (§7).
 
 ---
 
@@ -108,7 +119,8 @@ every line the application logs from then on.
 
 ## 4. How common is the precondition
 
-Measured on GitHub code search (2026-10-23):
+Measured on GitHub code search (2026-10-23) — a snapshot of *public* code, and a lower bound on
+private estates:
 
 | pattern | public occurrences |
 | --- | --- |
@@ -159,6 +171,38 @@ Two triggers, either is enough:
   logger use, so the value is already there when the substitution runs;
 * the configuration is reloaded while the MDC holds the data — `Configurator.reconfigure()`,
   `monitorInterval`, a management endpoint, a plugin reload.
+
+### The documentation already names this hazard — the code does not enforce it
+
+The obvious objection is that the risk was documented. It was, and it is worse than that:
+**Log4j's own javadoc states the requirement and the implementation does not meet it.**
+
+> *"A `StrSubstitutor` which only supports recursive evaluation of lookups. **This can be
+> dangerous when combined with user-provided inputs, and should only be used on data directly
+> from a configuration.**"*
+> — `ConfigurationStrSubstitutor`, `log4j-core` 2.26.1
+
+And the project's own threat model states that thread-context values are untrusted
+(<https://logging.apache.org/log4j/2.x/security.html>). So the two premises of the finding are
+both in the project's hands: the data may be attacker-controlled, and the substitutor must only
+be used on configuration data. What is missing is the step between them — the configuration
+substitutor *is* used on configuration data, but the Thread Context Map is one of the values it
+reads, and it reads that value the same way it reads everything else.
+
+That is why this is a defect and not a documented risk:
+
+1. **The hazard is documented as a constraint on the caller, not as a behaviour of the
+   implementation.** The caller cannot satisfy it: the configuration *has* to interpolate
+   something, and the substitutor has no way to know which lookups are safe.
+2. **The guardrail exists on the sibling path and is missing here.** The runtime substitutor
+   refuses to evaluate nested lookups, precisely to contain untrusted data. The configuration
+   substitutor — the one that reads the untrusted value — does not.
+3. **The result is not a wrong setting but code execution.** The attacker's value becomes a
+   script source that Log4j compiles and runs inside the application.
+
+The fix direction follows from the product's own policy rather than from new policy: apply the
+runtime substitutor's rule — do not evaluate lookups inside a context-data lookup's result — to
+the configuration path as well.
 
 ---
 
@@ -286,6 +330,7 @@ carries no target list. The command it executes in the victim JVM is `id`.
 
 | Path | What it is |
 | --- | --- |
+| `DISCLOSURE.md` | the shared disclosure record for both findings: timeline, status, and the report text |
 | `WORKUP.md` | the full write-up: root cause with `file:line` evidence (Log4j **and** JDK sources), the measured exploitability matrix, the audit of what is closed in the current release, detection, remediation, and limitations |
 | `lab/` | the proof-of-concept: victim apps, the malicious LDAP server, the script chain, and `verify.sh` (34 assertions) |
 | `scan/scan_log4j.py` | finds Log4j in a project tree, classifies the versions, and flags configurations that interpolate a lookup into a script attribute |

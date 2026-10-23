@@ -10,16 +10,20 @@
 A third finding — Log4j silently applying the fixed-name classpath resources
 `log4j2.system.properties` and `log4j2.component.properties` — was found in the same audit and
 has **its own repository**: <https://github.com/vindeckyy/log4j-classpath-plant-rce> (see
-[Part III](#part-iii--a-third-finding--now-in-its-own-repository)).
+[Part III](#part-iii--a-third-finding--now-in-its-own-repository)). Findings **B** and **C** are
+reported together through one channel, on one timeline — see `DISCLOSURE.md`. Finding A is the
+historical, already-public Log4Shell chain and is not part of that report.
 
 **Severity:** Critical
-**CVSS 3.1 (both chains):** `10.0 AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
+**CVSS 3.1 (finding B, code-execution chain):** `10.0 AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
+— see §13.2 for what that score covers and what the disclosure-only impact scores.
 **CWE:** CWE-917 (improper neutralization of special elements) → CWE-94 (code injection) /
 CWE-502 (deserialization of untrusted data) / CWE-200 (information exposure)
 **Component:** `org.apache.logging.log4j:log4j-core` (the lookup engine; `log4j-api` alone is not affected)
 **Verified vulnerable by execution:** 2.14.1 and earlier (finding A); 2.14.1 – 2.26.1 (finding B)
 **Verified vulnerable under extra conditions:** 2.15.0, 2.16.0 (JNDI reachable again — §16)
 **Verified not affected by finding A:** 2.17.1, 2.24.0, 2.25.1, 2.26.1, and Log4j 3.x (JNDI lookup removed entirely)
+**Disclosure status:** one report covering both findings from this audit — see `DISCLOSURE.md`.
 
 Everything below was derived by reading the sources in `sources/` and `analysis/jdksrc/`, and by
 running the attacks in `lab/`. The exploitability claims are measured output of
@@ -760,6 +764,61 @@ Triggers (either one is enough):
 Measured on 2.15.0, 2.16.0, 2.17.1 and 2.26.1 (`lab/run.sh <ver> reload`,
 `lab/src/lab/VictimReload.java`).
 
+### 13.1 Why the documentation does not make this a documented risk
+
+The obvious objection is that the risk was already written down. It was — and the write-up is
+what makes the finding a defect rather than a documented hazard.
+
+`ConfigurationStrSubstitutor`'s own javadoc (`sources/2.26.1/.../lookup/ConfigurationStrSubstitutor.java:23-25`)
+states both the hazard and a requirement:
+
+> *"only supports recursive evaluation of lookups. **This can be dangerous when combined with
+> user-provided inputs, and should only be used on data directly from a configuration.**"*
+
+and Apache's threat model states that thread-context values are untrusted
+(<https://logging.apache.org/log4j/2.x/security.html>). Both premises are therefore in the
+project's hands. What is missing is the step between them:
+
+1. **The requirement is placed on the caller, and the caller cannot satisfy it.** A
+   configuration *has* to interpolate something; the substitutor has no way to know which
+   lookups are safe, and it reads the context map exactly like the others.
+2. **The guardrail exists on the sibling path and is missing on this one.** The runtime
+   substitutor refuses to evaluate nested lookups, precisely to contain untrusted data
+   (`RuntimeStrSubstitutor`, `sources/2.26.1/.../lookup/RuntimeStrSubstitutor.java:23`). The
+   configuration substitutor — the one that reads the untrusted value — does not.
+3. **The outcome is not a wrong setting but code execution.** The attacker's value becomes the
+   script source Log4j compiles and runs in the application JVM (§14).
+4. **The other context-data source is treated the same way**, which shows the policy is not an
+   accident of one plugin: `ContextDataInjector` writes into the same map, and the same lookup
+   reads it.
+
+The fix direction therefore comes from the product's own policy rather than from new policy:
+apply the runtime substitutor's rule — do not evaluate lookups inside a context-data lookup's
+result — to the configuration path as well.
+
+### 13.2 Why the code-execution chain scores 10.0
+
+| Metric | Value | Justification, grounded in this lab |
+| --- | --- | --- |
+| Attack Vector (AV) | Network | The trigger is an HTTP request body/header/query string. Measured: a single request to the victim (§14). |
+| Attack Complexity (AC) | Low | One crafted value, no race, no special timing, no privileged precondition on the victim. |
+| Privileges Required (PR) | None | Any anonymous request that reaches a log call and populates the MDC. No auth, no role. |
+| User Interaction (UI) | None | Fully automatic: the substitution happens while the configuration is loaded. |
+| Scope (S) | Changed | The attacker starts in the requester's authority — anonymous, or a different tenant on a shared service — and ends with code execution as the server. Different security authority, different trust level. |
+| Confidentiality (C) | High | Arbitrary code in the app process: read any file, env var, secret, key material. |
+| Integrity (I) | High | Arbitrary code: modify data, files, other tenants' requests, the build pipeline. |
+| Availability (A) | High | Arbitrary code: kill the process, consume resources, pivot. |
+
+CVSS 3.1 base score for `AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H` = **10.0 (Critical)**.
+
+**What that score covers.** The code-execution chain, which needs two conditions on the target:
+scripting enabled (`log4j2.Script.enableLanguages` plus a JSR-223 engine) and a configuration
+that interpolates a lookup into a script attribute. The **defect itself is unconditional** — it
+is present on every release from 2.14.1 to 2.26.1 — and its other impact, disclosure of
+environment variables and system properties into every log line, needs no such condition and is
+scored separately at 7.5 (`AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N`), or 8.5 when the log pipeline
+crosses a trust boundary (§15).
+
 ### 14. Impact A — RCE in the current releases through the script source
 
 A configuration that interpolates a lookup into a script attribute turns the defect into code
@@ -943,6 +1002,7 @@ Nothing about it depends on the finding documented here; the two share only the 
 
 
 ```
+DISCLOSURE.md                    shared disclosure record: timeline, status, report text
 lab/src/lab/Victim.java         application that logs a user-controlled value (the sink)
 lab/src/lab/VictimCtx.java      application that puts a user-controlled value in the MDC
 lab/src/lab/VictimCtx2.java     same, but the configuration is loaded *before* the MDC is set
