@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Variant B: the script PATH comes from a lookup. ScriptFile accepts a URI and fetches it
+  (ScriptFile.createScript -> uri.toURL().openStream()), so the Thread Context Map value
+  decides which script Log4j downloads and executes.
+-->
+<Configuration status="WARN">
+  <Filters>
+    <ScriptFilter onMatch="NEUTRAL" onMismatch="DENY">
+      <ScriptFile name="evil" language="groovy" path="${ctx:scriptPath}"/>
+    </ScriptFilter>
+  </Filters>
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss} %-5level %logger{1} - %msg%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+</Configuration>

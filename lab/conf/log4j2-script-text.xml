@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Variant A: the script SOURCE comes from a lookup. Plugin attribute values are substituted
+  with the recursive ConfigurationStrSubstitutor at configuration load time, so the Thread
+  Context Map value becomes the code that Log4j compiles and runs.
+-->
+<Configuration status="WARN">
+  <Filters>
+    <ScriptFilter onMatch="NEUTRAL" onMismatch="DENY">
+      <Script language="groovy" scriptText="${ctx:scriptText}"/>
+    </ScriptFilter>
+  </Filters>
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss} %-5level %logger{1} - %msg%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+</Configuration>

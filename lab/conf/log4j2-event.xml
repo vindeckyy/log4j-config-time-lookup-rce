@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The 'event' lookup returns the raw formatted message, and log4j re-substitutes
+     lookup results. A layout that resolves ${event:Message} therefore evaluates the
+     message content as a template again - the "Message Lookups are no longer supported"
+     mitigation of 2.16.0 does not cover this path. -->
+<Configuration status="WARN">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%-5level %logger{1} - ${event:Message}%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+</Configuration>
