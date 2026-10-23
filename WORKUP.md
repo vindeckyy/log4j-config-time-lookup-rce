@@ -9,7 +9,7 @@
 
 A third finding — Log4j silently applying the fixed-name classpath resources
 `log4j2.system.properties` and `log4j2.component.properties` — was found in the same audit and
-has **its own repository**: <https://github.com/…/log4j-classpath-plant-repo> (see
+has **its own repository**: <https://github.com/vindeckyy/log4j-classpath-plant-rce> (see
 [Part III](#part-iii--a-third-finding--now-in-its-own-repository)).
 
 **Severity:** Critical
@@ -923,10 +923,10 @@ measured on 2.14.1 – 2.26.1, including with `log4j-api` alone on the classpath
 
 Because it is a separate defect with a separate trust model, it is documented separately:
 
-**→ `log4j-classpath-plant-repo`** — `README.md` (the finding), `WORKUP.md` (root cause with
-`file:line` evidence, the measured matrix, the target/reach/impact analysis, detection,
-remediation, limitations), `lab/` (the proof-of-concept, 14 assertions), and
-`scan/scan_planted.py` (detection on disk and inside jars).
+**→ <https://github.com/vindeckyy/log4j-classpath-plant-rce>** — `README.md` (the finding),
+`WORKUP.md` (root cause with `file:line` evidence, the measured matrix, the
+target/reach/impact analysis, detection, remediation, limitations), `lab/` (the proof-of-concept,
+14 assertions), and `scan/scan_planted.py` (detection on disk and inside jars).
 
 Nothing about it depends on the finding documented here; the two share only the audit.
 

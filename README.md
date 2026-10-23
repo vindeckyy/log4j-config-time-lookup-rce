@@ -32,7 +32,7 @@ unchanged, so the same defect is expected there — source-level only, see *Limi
 
 A second, independent finding from the same audit — Log4j silently applying the fixed-name
 classpath resources `log4j2.system.properties` and `log4j2.component.properties` — is documented
-in its own repository: **`log4j-classpath-plant-repo`**.
+in its own repository: <https://github.com/vindeckyy/log4j-classpath-plant-rce>.
 
 ## 2. The defect in one paragraph
 
@@ -182,7 +182,8 @@ carries no target list. The command it executes in the victim JVM is `id`.
 The lab also reproduces the historical, already-public Log4Shell chain (`log4j-core` ≤ 2.14.1)
 and the 2.15.0/2.16.0 variants, for comparison — see `WORKUP.md` Part I.
 
-The classpath-resource finding from the same audit lives in **`log4j-classpath-plant-repo`**.
+The classpath-resource finding from the same audit lives in
+<https://github.com/vindeckyy/log4j-classpath-plant-rce>.
 
 ## 9. Scope and ethics
 
