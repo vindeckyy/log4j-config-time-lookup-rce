@@ -26,6 +26,15 @@ running the attacks in `lab/`. The exploitability claims are measured output of
 `lab/verify.sh` (34 automated checks, all passing — see Appendix B), not restatements of an
 advisory database.
 
+**The short version.** Log4j substitutes configuration values with a substitutor that evaluates
+lookups *inside* lookup results, while the runtime path deliberately does not. The Thread
+Context Map is one of those lookups, and Apache's own threat model says thread-context values
+are untrusted. So: when Log4j loads or reloads its configuration while the MDC holds
+attacker-controlled data, that data is evaluated as a Log4j template — which is code execution
+when the configuration interpolates a lookup into a script attribute, and secret disclosure when
+it interpolates one into a layout. Part I covers the historical Log4Shell chain for comparison,
+Part II the defect that is still live in 2.26.1.
+
 ---
 
 ## Part I — The historical vulnerability (≤ 2.14.1) and the fixes up to 2.17.1
