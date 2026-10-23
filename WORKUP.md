@@ -875,7 +875,7 @@ event), not an unconditional per-event evaluation on every version.
 ### 19. Remediation
 
 * **How affected users reach the vendor**: this affects the current release, so the finding
-  travels to <security@logging.apache.org> (the Logging Services disclosure process, per
+  travels to <security@apache.org> (the Logging Services security team, per
   <https://logging.apache.org/security.html>) rather than to a public issue tracker. This
   repository *is* the disclosure: it was the first and only public report of the issue, and no
   vendor, mailing list, blog, talk or tracker knew about it beforehand.
