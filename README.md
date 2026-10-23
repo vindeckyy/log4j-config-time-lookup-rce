@@ -18,13 +18,23 @@
 CWE-94 (improper control of generation of code) / CWE-200 (information exposure)
 **Affected:** `log4j-core` 2.14.1 – **2.26.1** (current release) — verified by execution
 **Not affected:** `log4j-api` alone (no lookup engine), `log4j-1.2-api` bridge,
-`log4j 1.x` (different code path), Log4j 3.x (JNDI removed; the substitutor split below is
+`log4j` 1.x (different code path), Log4j 3.x (JNDI removed; the substitutor split below is
 unchanged, so the same defect is expected there — source-level only, see *Limitations*)
 **Found:** 2026-10-23
 
 ---
 
-## 1. The defect in one paragraph
+## 1. The finding
+
+| | Finding | Trigger | Impact |
+| --- | --- | --- | --- |
+| **B** | Configuration-time evaluation of untrusted Thread Context Map data | attacker data in the MDC while Log4j (re)loads its configuration | **RCE** (script source) and secret disclosure |
+
+A second, independent finding from the same audit — Log4j silently applying the fixed-name
+classpath resources `log4j2.system.properties` and `log4j2.component.properties` — is documented
+in its own repository: **`log4j-classpath-plant-repo`**.
+
+## 2. The defect in one paragraph
 
 Log4j keeps two substitutors with deliberately different policies.
 `RuntimeStrSubstitutor` resolves a lookup but does **not** evaluate lookups inside the result.
@@ -60,7 +70,7 @@ Two triggers, either is enough:
 * the configuration is reloaded while the MDC holds the data — `Configurator.reconfigure()`,
   `monitorInterval`, a management endpoint, a plugin reload.
 
-## 2. Impact A — remote code execution (critical)
+## 3. Impact A — remote code execution (critical)
 
 A configuration that interpolates a lookup into a script attribute turns the defect into code
 execution, because the substituted value becomes the **script source** Log4j compiles and runs:
@@ -104,7 +114,7 @@ Preconditions for this chain: scripting enabled (`log4j2.Script.enableLanguages`
 engine on the classpath) **and** a configuration that interpolates a lookup into a script
 attribute. Without an engine the chain fails closed.
 
-## 3. Impact B — secret disclosure, no special configuration needed
+## 4. Impact B — secret disclosure, no special configuration needed
 
 Any configuration that references a lookup in a layout (`${ctx:...}`) and any application that
 puts untrusted data in the MDC gets the value resolved **at configuration time** and baked into
@@ -122,7 +132,7 @@ live, and logs are usually shipped to aggregators with a wider audience than the
 itself. **CVSS 3.1:** `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N` = 7.5 (High), or
 `AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` = 8.5 when the log pipeline crosses a trust boundary.
 
-## 4. Reproduce it (localhost only)
+## 5. Reproduce it (localhost only)
 
 ```bash
 ./setup.sh                 # fetch jars + Log4j sources
@@ -135,7 +145,7 @@ itself. **CVSS 3.1:** `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N` = 7.5 (High), or
 All traffic binds to `127.0.0.1`. The lab contacts no third-party host, scans nothing, and
 carries no target list. The command it executes in the victim JVM is `id`.
 
-## 5. Detection
+## 6. Detection
 
 * Grep the deployed configuration for script attributes that interpolate a lookup:
   `<Script[^>]*(scriptText|path)="[^"]*\$\{`.
@@ -147,7 +157,7 @@ carries no target list. The command it executes in the victim JVM is `id`.
 * For the disclosure variant: check whether a layout uses `${ctx:...}` instead of `%X{...}`, and
   whether the MDC carries request data.
 
-## 6. Remediation
+## 7. Remediation
 
 * Do not interpolate untrusted data into configuration attributes — in particular never use a
   lookup for a script source or path.
@@ -159,7 +169,7 @@ carries no target list. The command it executes in the victim JVM is `id`.
   values come from untrusted context data — the runtime substitutor already has exactly that
   policy, and the same rule should apply to context-data lookups in the configuration path.
 
-## 7. Repository contents
+## 8. Repository contents
 
 | Path | What it is |
 | --- | --- |
@@ -172,7 +182,9 @@ carries no target list. The command it executes in the victim JVM is `id`.
 The lab also reproduces the historical, already-public Log4Shell chain (`log4j-core` ≤ 2.14.1)
 and the 2.15.0/2.16.0 variants, for comparison — see `WORKUP.md` Part I.
 
-## 8. Scope and ethics
+The classpath-resource finding from the same audit lives in **`log4j-classpath-plant-repo`**.
+
+## 9. Scope and ethics
 
 * Every server in this repository listens on `127.0.0.1`; no external host is ever contacted.
 * The payload executes `id` and writes a proof file; it does not persist, spread, or scan.
@@ -181,7 +193,7 @@ and the 2.15.0/2.16.0 variants, for comparison — see `WORKUP.md` Part I.
   configuration (`log4j2.xml`) is not vulnerable to Impact A; that chain needs a configuration
   that interpolates untrusted data into a script attribute.
 
-## 9. Limitations
+## 10. Limitations
 
 * Log4j 3.x is analysed at source level only: the `3.0.0-beta3` API artifact is not published
   to Maven Central, so it could not be executed here.
@@ -191,6 +203,6 @@ and the 2.15.0/2.16.0 variants, for comparison — see `WORKUP.md` Part I.
   same way.
 * The script chain was demonstrated with Groovy; any other JSR-223 engine behaves the same.
 
-## 10. License
+## 11. License
 
 Apache License 2.0 — see `LICENSE`.

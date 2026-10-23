@@ -41,6 +41,15 @@ curl -sS -m 120 -o "$ROOT/sources/log4j-api-2.26.1-sources.jar" \
 mkdir -p "$ROOT/sources/api-2.26.1"
 (cd "$ROOT/sources/api-2.26.1" && unzip -oq "../log4j-api-2.26.1-sources.jar")
 
+# Log4j 3.x: the API is published separately and the beta3 core needs an api that is not
+# published, so the 3.x statements in WORKUP.md rest on the 3.0.0-beta2 API source.
+curl -sS -m 120 -o "$ROOT/lib/log4j-api-3.0.0-beta2.jar" \
+    "$M/org/apache/logging/log4j/log4j-api/3.0.0-beta2/log4j-api-3.0.0-beta2.jar"
+curl -sS -m 120 -o "$ROOT/sources/log4j-api-3.0.0-beta2-sources.jar" \
+    "$M/org/apache/logging/log4j/log4j-api/3.0.0-beta2/log4j-api-3.0.0-beta2-sources.jar"
+mkdir -p "$ROOT/sources/api-3.0.0-beta2"
+(cd "$ROOT/sources/api-3.0.0-beta2" && unzip -oq "../log4j-api-3.0.0-beta2-sources.jar")
+
 if [ "${1:-}" = "--with-jdk-sources" ]; then
     echo "== JDK naming sources (for the analysis citations)"
     mkdir -p "$ROOT/analysis/jdksrc/jdk8full" "$ROOT/analysis/jdksrc/jdk17full"

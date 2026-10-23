@@ -7,6 +7,11 @@
 | **A** | JNDI lookup of log *content* → attacker-controlled class load → RCE | ≤ 2.14.1 | [Part I](#part-i--the-historical-vulnerability--2.141-and-earlier) (§1–§12) |
 | **B** | **Configuration-time evaluation of untrusted Thread Context Map data → RCE** (script source) and → secret disclosure | **2.14.1 – 2.26.1 (current)** | [Part II](#part-ii--current-releases-2171---2261-and-log4j-3x) (§13–§20) |
 
+A third finding — Log4j silently applying the fixed-name classpath resources
+`log4j2.system.properties` and `log4j2.component.properties` — was found in the same audit and
+has **its own repository**: <https://github.com/…/log4j-classpath-plant-repo> (see
+[Part III](#part-iii--a-third-finding--now-in-its-own-repository)).
+
 **Severity:** Critical
 **CVSS 3.1 (both chains):** `10.0 AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
 **CWE:** CWE-917 (improper neutralization of special elements) → CWE-94 (code injection) /
@@ -899,6 +904,31 @@ event), not an unconditional per-event evaluation on every version.
 * The MDC is one of several context-data sources; a custom `ContextDataInjector` behaves the
   same way.
 * The script chain was demonstrated with Groovy; any other JSR-223 engine behaves the same.
+
+---
+
+## Part III — a third finding, now in its own repository
+
+The same audit produced a third, independent finding: **`log4j-api` reads two resources by fixed
+name from the classpath and applies them without being asked** —
+
+| file | effect |
+| --- | --- |
+| `log4j2.system.properties` | every key is copied into the **JVM system properties** |
+| `log4j2.component.properties` | Log4j's own properties: the configuration file location and the enabled script languages |
+
+— which yields code execution (configuration hijack → script filter), arbitrary JVM
+reconfiguration, and a supply-chain delivery path (the same file inside a dependency jar). It was
+measured on 2.14.1 – 2.26.1, including with `log4j-api` alone on the classpath.
+
+Because it is a separate defect with a separate trust model, it is documented separately:
+
+**→ `log4j-classpath-plant-repo`** — `README.md` (the finding), `WORKUP.md` (root cause with
+`file:line` evidence, the measured matrix, the target/reach/impact analysis, detection,
+remediation, limitations), `lab/` (the proof-of-concept, 14 assertions), and
+`scan/scan_planted.py` (detection on disk and inside jars).
+
+Nothing about it depends on the finding documented here; the two share only the audit.
 
 ---
 
