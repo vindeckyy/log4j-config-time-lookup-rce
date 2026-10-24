@@ -20,6 +20,7 @@ channel.
 | 2026-10-23 | Both findings identified and reproduced end to end (`lab/verify.sh` in each repository: 34 and 15 assertions, all passing). |
 | 2026-10-23 | Finding B's repository published. |
 | 2026-10-23 | Finding C's repository published, later the same day. The second repository appeared after the first: the two findings were written up separately during the audit, and finding C's material was then moved out of finding B's repository so that each repository documents exactly one finding. |
+| 2026-10-23 | Fix proposals for both findings filed on Apache's public issue tracker: finding **B** → <https://github.com/apache/logging-log4j2/issues/4425>, finding **C** → <https://github.com/apache/logging-log4j2/issues/4426>. These carry the technical fix proposals and the reproduction summary; the in-progress report to the security team remains the coordinated-disclosure channel. |
 | **pending** | Report sent to the Apache Logging Services security team — **one report covering both findings**. The text is in the *Report text* section below. |
 | pending | Apache's response. |
 | pending | Planned publication date. |
