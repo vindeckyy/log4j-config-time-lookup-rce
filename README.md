@@ -345,6 +345,16 @@ The classpath-resource finding from the same audit lives in
 
 ---
 
+## Related research
+
+Other disclosures from the same author, each with a full write-up and a working
+proof of concept:
+
+- **[TP-Link Archer AXE300 — authenticated command injection (root RCE)](https://github.com/vindeckyy/tp-link-archer-axe300-command-injection-rce)** — OS command injection in the ISP Speed Test of a consumer router: one authenticated request yields a root shell on the network gateway. Includes a standalone PoC and the device internals.
+- **[VIZIO SmartCast — unauthenticated LAN JavaScript execution and persistent internal-API control](https://github.com/vindeckyy/smartcast-backdoor)** — A LAN attacker gets code execution on the TV and durable control of its internal API, on hardware that ships a JavaScript app store.
+- **[Apache Log4j — RCE via classpath resources Log4j trusts without asking](https://github.com/vindeckyy/log4j-classpath-plant-rce)** — A planted configuration resource is evaluated at start-up, so the attack lands before any request reaches the application.
+- **[Apache Log4j — log injection and record corruption](https://github.com/vindeckyy/log4j-log-injection)** — Three findings in the logging path itself: structured-data injection, 3.x attribute drift and JSON NaN, live-proven.
+
 ## 13. Scope and ethics
 
 * Every server in this repository listens on `127.0.0.1`; no external host is ever contacted.
